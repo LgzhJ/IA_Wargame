@@ -207,7 +207,10 @@ void f_affiche_plateau(Pion *plateau){
 #endif
 }
 
-
+/**
+* Après chaque coup regarde si un joueur a gagné ou non la partie
+* Retourne la couleur du gagnant (-1, 0 ou 1)
+**/
 int f_gagnant(){
 	int i, j, somme1=0, somme2=0;
 
@@ -250,8 +253,8 @@ int f_gagnant(){
 
 /**
  * Prend comme argument la ligne et la colonne de la case
- * 	pour laquelle la bataille a lieu
- * Renvoie le couleur du gagnant
+ * pour laquelle la bataille a lieu
+ * Renvoie la couleur gagnante du combat
  * */
 int f_bataille(int l, int c)
 {
@@ -407,6 +410,21 @@ int f_valeur(Pion* jeu, int joueur){
 //fonction d'évaluation
 int f_eval(Pion* jeu,int joueur){
 	/** A vous de trouver une fonction efficace **/
+
+	/*Si joueur gagne*/
+	if(f_gagnant() == joueur){
+		return INFINI;
+	}
+	/*Si son adversaire gagne*/
+	if(f_gagnant() == -joueur){
+		return -INFINI; 
+	}
+
+	int score = f_valeur(jeu, joueur) - f_valeur(jeu, -joueur);
+	return score;
+
+	/*Autres critères d'évaluation */
+	
 }
 
 //copie du plateau
