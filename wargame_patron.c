@@ -211,7 +211,7 @@ void f_affiche_plateau(Pion *plateau){
 * Après chaque coup regarde si un joueur a gagné ou non la partie
 * Retourne la couleur du gagnant (-1, 0 ou 1)
 **/
-int f_gagnant(){
+int f_gagnant(Pion* plateau){
 	int i, j, somme1=0, somme2=0;
 
 
@@ -222,9 +222,9 @@ int f_gagnant(){
 	//Quelqu'un est-il arrive sur la ligne de l'autre
 	for(i=0; i<NB_COLONNES; i++)
 	{
-		if(plateauDeJeu[i].couleur == 1)
+		if(plateau[i].couleur == 1)
 			return 1;
-		if(plateauDeJeu[(NB_LIGNES-1)*NB_COLONNES+i].couleur == -1)
+		if(plateau[(NB_LIGNES-1)*NB_COLONNES+i].couleur == -1)
 			return -1;
 	}
 
@@ -233,9 +233,9 @@ int f_gagnant(){
 	{
 		for(j=0; j<NB_COLONNES; j++)
 		{
-			if(plateauDeJeu[i*NB_COLONNES+j].couleur == 1)
+			if(plateau[i*NB_COLONNES+j].couleur == 1)
 				somme1++;
-			if(plateauDeJeu[i*NB_COLONNES+j].couleur == -1)
+			if(plateau[i*NB_COLONNES+j].couleur == -1)
 				somme2++;
 		}
 	}
@@ -252,11 +252,11 @@ int f_gagnant(){
 
 
 /**
- * Prend comme argument la ligne et la colonne de la case
+ * Prend comme argument le plateau, la ligne et la colonne de la case
  * pour laquelle la bataille a lieu
  * Renvoie la couleur gagnante du combat
  * */
-int f_bataille(int l, int c)
+int f_bataille(Pion *plateau, int l, int c)
 {
 	int i, j, mini, maxi, minj, maxj;
 	int somme=0;
@@ -273,10 +273,10 @@ int f_bataille(int l, int c)
 	{
 		for(j=minj; j<=maxj; j++)
 		{
-			somme += plateauDeJeu[i*NB_COLONNES+j].couleur*plateauDeJeu[i*NB_COLONNES+j].valeur;
+			somme += plateau[i*NB_COLONNES+j].couleur*plateau[i*NB_COLONNES+j].valeur;
 		}
 	}
-	somme -= plateauDeJeu[l*NB_COLONNES+c].couleur*plateauDeJeu[l*NB_COLONNES+c].valeur;
+	somme -= plateau[l*NB_COLONNES+c].couleur*plateau[l*NB_COLONNES+c].valeur;
 
 #ifdef DEBUG
 	printf("dbg: exiting %s %d\n", __FUNCTION__, __LINE__);
@@ -286,7 +286,7 @@ int f_bataille(int l, int c)
 	if(somme > 0)
 		return 1;
 
-	return plateauDeJeu[l*NB_COLONNES+c].couleur;
+	return plateau[l*NB_COLONNES+c].couleur;
 }
 
 
@@ -350,7 +350,7 @@ int f_bouge_piece(Pion *plateau, int l1, int c1, int l2, int c2, int couleur){
 	}
 	else
 	{
-		gagnant=f_bataille(l2, c2);
+		gagnant=f_bataille(plateau, l2, c2);
 		/* victoire */
 		if(gagnant == couleur)
 		{
@@ -411,12 +411,13 @@ int f_valeur(Pion* jeu, int joueur){
 int f_eval(Pion* jeu,int joueur){
 	/** A vous de trouver une fonction efficace **/
 
+	int gagnant = f_gagnant(jeu);
 	/*Si joueur gagne*/
-	if(f_gagnant() == joueur){
+	if(gagnant == joueur){
 		return INFINI;
 	}
 	/*Si son adversaire gagne*/
-	if(f_gagnant() == -joueur){
+	if(gagnant == -joueur){
 		return -INFINI; 
 	}
 
@@ -457,13 +458,87 @@ Pion* f_raz_plateau(){
 }
 
 //Fonction min trouve le minimum des noeuds fils
-void f_min(){
+int f_min(Pion *plateau, int joueur, int profondeur_limite){
 	/** A remplir **/
+	Pion *plateau_fils;
+	int min = INFINI;
+	int valeur;
+
+	if(profondeur_limite == 0){
+		return f_eval(plateau, joueur);
+	}
+
+	plateau_fils = f_raz_plateau();
+
+	for(int i=0; i<NB_LIGNES; i++){
+		for(int j=0; j<NB_COLONNES; j++){
+
+			if(plateau[i*NB_COLONNES+j].couleur==joueur){
+
+				for(int ligne_dest=i-1; ligne_dest<=i+1; ligne_dest++){
+					for(int col_dest=j-1; col_dest<=j+1; col_dest++){
+						f_copie_plateau(plateau, plateau_fils);
+						
+						int l_origine = i;
+						int c_origine = j;
+						if(f_bouge_piece(plateau_fils, l_origine, c_origine, ligne_dest, col_dest, joueur) != 1){
+
+							valeur = f_max(plateau_fils, -joueur, profondeur_limite-1);
+							if(valeur<min){
+								min=valeur;
+								/* Trouver un moyen de garder le coup min ? Si nécessaire.*/
+							}
+						}
+						
+					}
+				}
+			}
+		}
+	}
+	free(plateau_fils);
+	return min;
 }
 
 //Fonction max trouve le maximum des noeuds fils
-void f_max(){
+int f_max(Pion *plateau, int joueur, int profondeur_limite){
 	/** A remplir **/
+	Pion *plateau_fils;
+	int max = -INFINI;
+	int valeur;
+
+	if(profondeur_limite == 0){
+		return f_eval(plateau, joueur);
+	}
+
+	plateau_fils = f_raz_plateau();
+
+	for(int i=0; i<NB_LIGNES; i++){
+		for(int j=0; j<NB_COLONNES; j++){
+
+			if(plateau[i*NB_COLONNES+j].couleur==joueur){
+
+				for(int ligne_dest=i-1; ligne_dest<=i+1; ligne_dest++){
+					for(int col_dest=j-1; col_dest<=j+1; col_dest++){
+						f_copie_plateau(plateau, plateau_fils);
+						
+						int l_origine = i;
+						int c_origine = j;
+						if(f_bouge_piece(plateau_fils, l_origine, c_origine, ligne_dest, col_dest, joueur) != 1){
+
+							valeur = f_min(plateau_fils, -joueur, profondeur_limite-1);
+							if(valeur>max){
+								max=valeur;
+								/* Trouver un moyen de garder le coup max*/
+							}
+						}
+						
+					}
+				}
+			}
+		}
+	}
+	free(plateau_fils);
+	return max;
 }
 
 /**
@@ -548,7 +623,7 @@ int main(int argv, char *argc[]){
 			f_IA(joueur);
 		}
 
-		if ((ret = f_gagnant()) != 0)
+		if ((ret = f_gagnant(plateauDeJeu)) != 0)
 		{
 			switch (ret)
 			{
