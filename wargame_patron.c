@@ -23,6 +23,8 @@ void f_affiche_plateau(Pion *plateau);
 int f_convert_char2int(char c);
 char f_convert_int2char(int i);
 
+int f_min(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine);
+int f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine);
 
 
 int f_convert_char2int(char c){
@@ -408,20 +410,20 @@ int f_valeur(Pion* jeu, int joueur){
 }
 
 //fonction d'évaluation
-int f_eval(Pion* jeu,int joueur){
+int f_eval(Pion* jeu,int joueur_racine){
 	/** A vous de trouver une fonction efficace **/
 
 	int gagnant = f_gagnant(jeu);
 	/*Si joueur gagne*/
-	if(gagnant == joueur){
+	if(gagnant == joueur_racine){
 		return INFINI;
 	}
 	/*Si son adversaire gagne*/
-	if(gagnant == -joueur){
+	if(gagnant == -joueur_racine){
 		return -INFINI; 
 	}
 
-	int score = f_valeur(jeu, joueur) - f_valeur(jeu, -joueur);
+	int score = f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine);
 	return score;
 
 	/*Autres critères d'évaluation */
@@ -458,14 +460,19 @@ Pion* f_raz_plateau(){
 }
 
 //Fonction min trouve le minimum des noeuds fils
-int f_min(Pion *plateau, int joueur, int profondeur_limite){
+int f_min(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine){
 	/** A remplir **/
 	Pion *plateau_fils;
 	int min = INFINI;
 	int valeur;
 
+	int gagnant = f_gagnant(plateau);
+	if(gagnant != 0){
+		return gagnant * joueur_racine * INFINI;
+	}
+
 	if(profondeur_limite == 0){
-		return f_eval(plateau, joueur);
+		return f_eval(plateau, joueur_racine);
 	}
 
 	plateau_fils = f_raz_plateau();
@@ -483,10 +490,11 @@ int f_min(Pion *plateau, int joueur, int profondeur_limite){
 						int c_origine = j;
 						if(f_bouge_piece(plateau_fils, l_origine, c_origine, ligne_dest, col_dest, joueur) != 1){
 
-							valeur = f_max(plateau_fils, -joueur, profondeur_limite-1);
+							valeur = f_max(plateau_fils, -joueur, profondeur_limite-1, joueur_racine);
 							if(valeur<min){
 								min=valeur;
 								/* Trouver un moyen de garder le coup min ? Si nécessaire.*/
+
 							}
 						}
 						
@@ -500,14 +508,19 @@ int f_min(Pion *plateau, int joueur, int profondeur_limite){
 }
 
 //Fonction max trouve le maximum des noeuds fils
-int f_max(Pion *plateau, int joueur, int profondeur_limite){
+int f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine){
 	/** A remplir **/
 	Pion *plateau_fils;
 	int max = -INFINI;
 	int valeur;
 
+	int gagnant = f_gagnant(plateau);
+	if(gagnant != 0){
+		return gagnant * joueur_racine * INFINI;
+	}
+
 	if(profondeur_limite == 0){
-		return f_eval(plateau, joueur);
+		return f_eval(plateau, joueur_racine);
 	}
 
 	plateau_fils = f_raz_plateau();
@@ -525,10 +538,11 @@ int f_max(Pion *plateau, int joueur, int profondeur_limite){
 						int c_origine = j;
 						if(f_bouge_piece(plateau_fils, l_origine, c_origine, ligne_dest, col_dest, joueur) != 1){
 
-							valeur = f_min(plateau_fils, -joueur, profondeur_limite-1);
+							valeur = f_min(plateau_fils, -joueur, profondeur_limite-1, joueur_racine);
 							if(valeur>max){
 								max=valeur;
 								/* Trouver un moyen de garder le coup max*/
+								
 							}
 						}
 						
