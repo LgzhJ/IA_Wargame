@@ -8,6 +8,7 @@
 #define NB_LIGNES 10
 #define NB_COLONNES 10
 #define INFINI 10000
+#define FACTEUR_AVANCEE 2
 
 /*#define DEBUG*/
 
@@ -414,6 +415,30 @@ int f_valeur(Pion* jeu, int joueur){
 	return valeur;
 }
 
+// Retourne le nombre de coup pour arriver à la ligne de l'adversaire
+int f_distance_arrivee(int ligne, int joueur){
+	if(joueur == 1) {
+		return ligne;
+	} 
+	else {
+		return NB_LIGNES - 1 - ligne;
+	}
+}
+
+// Retourne la somme, pour tous les pions du joueur, les points selon la distance à l'arrivée
+// (NB_LIGNES - 1) - f_distance_arrivee(i, joueur) : plus ils sont proches, plus le score est élevé
+int f_calcul_avance(Pion* jeu, int joueur){
+	int point_total = 0;
+	for(int i = 0; i < NB_LIGNES; i++){
+		for(int j = 0; j < NB_COLONNES; j++){
+			if(jeu[i * NB_COLONNES + j].couleur == joueur){
+				point_total += (NB_LIGNES - 1) - f_distance_arrivee(i, joueur);
+			}
+		}
+	}
+	return point_total;
+}
+
 int f_eval2(Pion* jeu,int joueur_racine){
 	/** A vous de trouver une fonction efficace **/
 	int score = 1;
@@ -448,6 +473,8 @@ int f_eval(Pion* jeu,int joueur_racine){
 	}
 
 	score += f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine);
+	
+	score += FACTEUR_AVANCEE * (f_calcul_avance(jeu, joueur_racine) - f_calcul_avance(jeu, -joueur_racine));
 
 	return score;
 
