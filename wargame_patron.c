@@ -16,6 +16,7 @@
 
 #define POID_DIFF_VALEURS_2 50
 #define POID_AVANCEE_2 100
+#define POID_NBPIONS_2 70
 
 /*#define DEBUG*/
 
@@ -451,16 +452,16 @@ int f_calcul_avance(Pion* jeu, int joueur){
 }
 
 //fonction d'évaluation
-int f_eval(Pion* jeu,int joueur_racine){
+int f_eval(Pion* jeu,int joueur_racine, int profondeur){
 	/** A vous de trouver une fonction efficace **/
 	int score = 1;
 	int gagnant = f_gagnant(jeu);
 
 	if(gagnant == joueur_racine){
-		return INFINI;
+		return INFINI + profondeur;
 	}
 	if(gagnant == -joueur_racine){
-		return -INFINI;
+		return -INFINI - profondeur;
 	}
 
 	score += POID_DIFF_VALEURS_1 * (f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine));
@@ -474,26 +475,26 @@ int f_eval(Pion* jeu,int joueur_racine){
 	
 }
 
-int f_eval2(Pion* jeu,int joueur_racine){
-	/** A vous de trouver une fonction efficace **/
+// fonction d'évaluation
+// profondeur = profondeur restante (profondeur_limite) au moment de l'appel
+int f_eval2(Pion* jeu, int joueur_racine, int profondeur){
+  /** A vous de trouver une fonction efficace **/
 	int score = 1;
 	int gagnant = f_gagnant(jeu);
 
 	if(gagnant == joueur_racine){
-		return INFINI;
+		return INFINI + profondeur;
 	}
 	if(gagnant == -joueur_racine){
-		return -INFINI;
+		return -INFINI - profondeur;
 	}
 
 	score += POID_DIFF_VALEURS_2 * (f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine));
 	score += POID_AVANCEE_2 * (f_calcul_avance(jeu, joueur_racine) - f_calcul_avance(jeu, -joueur_racine));
+	score += POID_NBPIONS_2 * (f_nbPions(jeu, joueur_racine) - f_nbPions(jeu, -joueur_racine));
 
 	score += rand() % 10;
 	return score;
-
-	/*Autres critères d'évaluation */
-	
 }
 
 //copie du plateau
@@ -539,19 +540,13 @@ Coup f_min(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 
 	f_nbNoeudsVisites(joueur_racine);
 
-	if((profondeur_limite == 0 || f_gagnant(plateau) != 0) && joueur != joueur_racine && mode_de_jeux == 3){
-		val = f_eval2(plateau, joueur_racine);
-		if(val == INFINI) val += profondeur_limite;
-		if(val == -INFINI) val -= profondeur_limite;
-		min.valeur = val;
+	if((profondeur_limite == 0 || f_gagnant(plateau) != 0) && joueur_racine == -1 && mode_de_jeux == 3){
+		min.valeur = f_eval2(plateau, joueur_racine, profondeur_limite);
 		return min;
 	}
 
 	if(profondeur_limite == 0 || f_gagnant(plateau) != 0){
-		val = f_eval(plateau, joueur_racine);
-		if(val == INFINI) val += profondeur_limite;
-		if(val == -INFINI) val -= profondeur_limite;
-		min.valeur = val;
+		min.valeur = f_eval(plateau, joueur_racine, profondeur_limite);
 		return min;
 	}
 
@@ -605,19 +600,13 @@ Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 
 	f_nbNoeudsVisites(joueur_racine);
 	
-	if((profondeur_limite == 0 || f_gagnant(plateau) != 0) && joueur != joueur_racine && mode_de_jeux == 3){
-		val = f_eval2(plateau, joueur_racine);
-		if(val == INFINI) val += profondeur_limite;
-		if(val == -INFINI) val -= profondeur_limite;
-		max.valeur = val;
+	if((profondeur_limite == 0 || f_gagnant(plateau) != 0) && joueur_racine == -1 && mode_de_jeux == 3){
+		max.valeur = f_eval2(plateau, joueur_racine, profondeur_limite);
 		return max;
 	}
 
 	if(profondeur_limite == 0 || f_gagnant(plateau) != 0){
-		val = f_eval(plateau, joueur_racine);
-		if(val == INFINI) val += profondeur_limite;
-		if(val == -INFINI) val -= profondeur_limite;
-		max.valeur = val;
+		max.valeur = f_eval(plateau, joueur_racine, profondeur_limite);
 		return max;
 	}
 
@@ -666,7 +655,7 @@ Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 /**
  * Calcule et joue le meilleur cout
  * */
-void f_IA(int joueur, int mode){
+void f_IA(int joueur, int mode, int bloque_printf){
 #ifdef DEBUG
 	printf("dbg: entering %s %d\n", __FUNCTION__, __LINE__);
 #endif
@@ -692,12 +681,14 @@ void f_IA(int joueur, int mode){
 	int c2 = meilleur_coup.c2;
 
 	f_bouge_piece(plateauDeJeu, l1, c1, l2, c2, joueur);
-	if(joueur == 1) {
-		printf("\nNoeuds visités : %i", nb_noeuds_visites_joueurX);
-		printf("\nIA X : pion %c%i déplacé en %c%i avec un score : %i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2, valeur_eval);
-	}else{
-		printf("\nNoeuds visités : %i", nb_noeuds_visites_joueurO);
-		printf("\nIA O : pion %c%i déplacé en %c%i avec un score : %i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2, valeur_eval);
+	if(!bloque_printf){
+		if(joueur == 1) {
+			printf("\nNoeuds visités : %i", nb_noeuds_visites_joueurX);
+			printf("\nIA X : pion %c%i déplacé en %c%i avec un score : %i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2, valeur_eval);
+		}else{
+			printf("\nNoeuds visités : %i", nb_noeuds_visites_joueurO);
+			printf("\nIA O : pion %c%i déplacé en %c%i avec un score : %i", f_convert_int2char(c1), l1, f_convert_int2char(c2), l2, valeur_eval);
+		}
 	}
 
 #ifdef DEBUG
@@ -749,49 +740,95 @@ void f_humain(int joueur){
 
 int main(int argv, char *argc[]){
 	srand(time(NULL));
-	int fin = 0,mode=0 , ret, joueur = 1; int tour = 1;
-	printf("1 humain vs IA\n2 humain vs humain\n3 IA vs IA\n");
-	scanf("%d",&mode);
+	int fin = 0, mode = 0 , ret, joueur = 1; 
+	int tour = 1; 
+	int nbParties=0; // Utilisé dans le mode 4, pour joueur plusieurs parties
+	printf("1 humain vs IA\n2 humain vs humain\n3 IA vs IA\n4 IA vs IA (N fois)\n");
+	printf("Choisissez le mode de jeu : "); 
+	scanf("%d", &mode);
 
-	plateauDeJeu = f_init_plateau();
-	while (!fin)
-	{
-		f_affiche_plateau(plateauDeJeu);
-		printf("\nTour %i :", tour);
-		tour += 1;
-		if(mode==1)
+	if(mode != 4){
+		plateauDeJeu = f_init_plateau();
+		while (!fin)
 		{
-			if(joueur>0)
-				f_humain(joueur);
-			else
-				f_IA(joueur, mode);
-		}
-		else if(mode==2)
-		{
-			f_humain(joueur);
-		}
-		else
-		{
-			f_IA(joueur, mode);
-		}
-
-		if ((ret = f_gagnant(plateauDeJeu)) != 0)
-		{
-			switch (ret)
+			f_affiche_plateau(plateauDeJeu);
+			printf("\nTour %i :", tour);
+			tour += 1;
+			if(mode==1)
 			{
-			case 1:
-				f_affiche_plateau(plateauDeJeu);
-				printf("\njoueur x gagne!\n");
-				fin = 1;
-				break;
-			case -1:
-				f_affiche_plateau(plateauDeJeu);
-				printf("\njoueur o gagne!\n");
-				fin = 1;
-				break;
+				if(joueur>0)
+					f_humain(joueur);
+				else
+					f_IA(joueur, mode, 0);
 			}
+			else if(mode==2)
+			{
+				f_humain(joueur);
+			}
+			else
+			{
+				f_IA(joueur, mode, 0);
+			}
+
+			if ((ret = f_gagnant(plateauDeJeu)) != 0)
+			{
+				switch (ret)
+				{
+				case 1:
+					f_affiche_plateau(plateauDeJeu);
+					printf("\njoueur x gagne!\n");
+					fin = 1;
+					break;
+				case -1:
+					f_affiche_plateau(plateauDeJeu);
+					printf("\njoueur o gagne!\n");
+					fin = 1;
+					break;
+				}
+			}
+			joueur = -joueur;
 		}
-		joueur = -joueur;
+	}
+	else{
+		
+		int nb_gagneX=0; int nb_gagneO=0;
+		printf("\nNombre de parties : "); 
+		scanf("%d", &nbParties);
+		int i=0;
+		while(i<nbParties){
+
+			int fin = 0, mode = 3, bloque_printf = 1; // bloque_printf une var quelconque passé à f_IA pour bloquer les affichages
+
+			plateauDeJeu = f_init_plateau();
+			while (!fin) {
+				f_IA(joueur, mode , bloque_printf);
+
+				if ((ret = f_gagnant(plateauDeJeu)) != 0)
+				{
+					switch (ret)
+					{
+					case 1:
+						//f_affiche_plateau(plateauDeJeu);
+						printf("\njoueur x gagne!\n");
+						nb_gagneX += 1;
+						fin = 1;
+						break;
+					case -1:
+						//f_affiche_plateau(plateauDeJeu);
+						printf("\njoueur o gagne!\n");
+						nb_gagneO += 1;
+						fin = 1;
+						break;
+					}
+				}
+				joueur = -joueur;
+			}
+			i+=1;
+		}
+		float proba_nb_gagneX = 100.0f * (float)nb_gagneX / (float)nbParties;
+		float proba_nb_gagneO = 100.0f * (float)nb_gagneO / (float)nbParties;
+		printf("\nLe joueur X a gagné %d parties sur %d : %.3f%s de victoire\n", nb_gagneX, nbParties, proba_nb_gagneX, "%");
+		printf("\nLe joueur X a gagné %d parties sur %d : %.3f%s de victoire\n", nb_gagneO, nbParties, proba_nb_gagneO, "%");
 	}
 
 #ifdef DEBUG
