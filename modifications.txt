@@ -1,0 +1,17 @@
+Ajout:
+	- Structure Coup
+	- primitive de f_min et f_max
+	- variable globale : nb_noeuds_visites_joueurX, nb_noeuds_visites_joueurO, total_noeuds_partie_X, total_noeuds_partie_O
+	- f_distance_arrivee(int ligne, int joueur)
+	- f_calcul_avance(Pion* jeu, int joueur)
+	- f_force_voisins(Pion *jeu, int joueur)
+	- f_eval() et f_eval2() pour des tests
+	- f_min() et f_max()
+	- f_nbNoeudsVisites(int joueur)
+	- f_IA()
+	- Mode 4 dans main pour lancer plusieurs parties en mode IA vs IA
+	
+Modif:
+	- f_gagnant(Pion* plateau) --> f_gagnant(Pion* plateau)
+	- f_bataille(int l, int c) --> f_bataille(Pion *plateau, int l, int c)
+
