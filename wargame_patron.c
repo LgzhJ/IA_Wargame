@@ -8,15 +8,8 @@
 
 #define NB_LIGNES 10
 #define NB_COLONNES 10
-#define INFINI 20000
-
-#define POID_DIFF_VALEURS_1 70
-#define POID_AVANCEE_1 100
-#define POID_NBPIONS_1 50
-
-#define POID_DIFF_VALEURS_2 50
-#define POID_AVANCEE_2 100
-#define POID_NBPIONS_2 70
+#define INFINI 10000
+#define MAX_COUPS_EGAUX 112
 
 /*#define DEBUG*/
 
@@ -42,6 +35,9 @@ Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 
 int nb_noeuds_visites_joueurX = 0;
 int nb_noeuds_visites_joueurO = 0;
+
+int total_noeuds_partie_X = 0;
+int total_noeuds_partie_O = 0;
 
 int f_convert_char2int(char c){
 #ifdef DEBUG
@@ -442,59 +438,96 @@ int f_calcul_avance(Pion* jeu, int joueur){
 	int point_avance = 0;
 	for(int i = 0; i < NB_LIGNES; i++){
 		for(int j = 0; j < NB_COLONNES; j++){
-			if(jeu[i * NB_COLONNES + j].couleur == joueur){
+			Pion pion = jeu[i*NB_COLONNES+j];
+			if(pion.couleur == joueur){
 				point_avance = ((NB_LIGNES - 1) - f_distance_arrivee(i, joueur));
-				point_total += point_avance * point_avance;
+				point_total += (point_avance + 1) * pion.valeur;
 			}
 		}
 	}
 	return point_total;
 }
 
+// Calcule la somme des voisins du pion
+int f_force_voisins(Pion *jeu, int joueur) {
+    int somme_forces = 0;
+
+    for (int l = 0; l < NB_LIGNES; l++) {
+        for (int c = 0; c < NB_COLONNES; c++) {
+            // Ignore les pions du joueur adverse
+            if (jeu[l * NB_COLONNES + c].couleur != joueur) {
+                continue;
+            }
+            // Parcourir le voisinage 3x3 autour du pion
+            for (int i = l - 1; i <= l + 1; i++) {
+                for (int j = c - 1; j <= c + 1; j++) {
+                    //  Ignore le pion lui-même
+                    if (i == l && j == c) {
+                        continue;
+                    }
+                    // Vérifie que la case est dans le plateau
+                    if (i < 0 || i >= NB_LIGNES || j < 0 || j >= NB_COLONNES) {
+                        continue;
+                    }
+                    Pion voisin = jeu[i * NB_COLONNES + j];
+                    if (voisin.couleur == joueur) {
+                        somme_forces += voisin.valeur;
+                    }
+                }
+            }
+        }
+    }
+    return somme_forces;
+}
+
 //fonction d'évaluation
 int f_eval(Pion* jeu,int joueur_racine, int profondeur){
 	/** A vous de trouver une fonction efficace **/
-	int score = 1;
+	int score = 0;
 	int gagnant = f_gagnant(jeu);
 
-	if(gagnant == joueur_racine){
-		return INFINI + profondeur;
-	}
-	if(gagnant == -joueur_racine){
-		return -INFINI - profondeur;
-	}
+    if (gagnant == joueur_racine) {
+        return INFINI + profondeur;
+    }
+    if (gagnant == -joueur_racine) {
+        return -INFINI - profondeur;
+    }
+    //int diff_nbPions = f_nbPions(jeu, joueur_racine) - f_nbPions(jeu, -joueur_racine);
+    int diff_valeur =  f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine);
+    int diff_avance = f_calcul_avance(jeu, joueur_racine) - f_calcul_avance(jeu, -joueur_racine);
+	int diff_force_voisins = f_force_voisins(jeu, joueur_racine) - f_force_voisins(jeu, -joueur_racine);
 
-	score += POID_DIFF_VALEURS_1 * (f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine));
-	score += POID_AVANCEE_1 * (f_calcul_avance(jeu, joueur_racine) - f_calcul_avance(jeu, -joueur_racine));
-	score += POID_NBPIONS_1 * (f_nbPions(jeu, joueur_racine) - f_nbPions(jeu, -joueur_racine));
+   	//score += 10 * diff_nbPions; // Si uniquement ce critère, tourne à l'infini
+    score += 50 * diff_valeur;
+    score += 25 * diff_avance;
+	score += 5 * diff_force_voisins;
 
-	score += rand() % 10;
-	return score;
-
-	/*Autres critères d'évaluation */
+    return score;
 	
 }
 
-// fonction d'évaluation
-// profondeur = profondeur restante (profondeur_limite) au moment de l'appel
 int f_eval2(Pion* jeu, int joueur_racine, int profondeur){
-  /** A vous de trouver une fonction efficace **/
-	int score = 1;
+	/** A vous de trouver une fonction efficace **/
+	int score = 0;
 	int gagnant = f_gagnant(jeu);
 
-	if(gagnant == joueur_racine){
-		return INFINI + profondeur;
-	}
-	if(gagnant == -joueur_racine){
-		return -INFINI - profondeur;
-	}
+    if (gagnant == joueur_racine) {
+        return INFINI + profondeur;
+    }
+    if (gagnant == -joueur_racine) {
+        return -INFINI - profondeur;
+    }
+    //int diff_nbPions = f_nbPions(jeu, joueur_racine) - f_nbPions(jeu, -joueur_racine);
+    int diff_valeur =  f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine);
+    int diff_avance = f_calcul_avance(jeu, joueur_racine) - f_calcul_avance(jeu, -joueur_racine);
+	int diff_force_voisins = f_force_voisins(jeu, joueur_racine) - f_force_voisins(jeu, -joueur_racine);
+	
+   	//score += 10 * diff_nbPions; // Si uniquement ce critère, tourne à l'infini
+    score += 50 * diff_valeur;
+    score += 25 * diff_avance;
+	score += 5 * diff_force_voisins;
 
-	score += POID_DIFF_VALEURS_2 * (f_valeur(jeu, joueur_racine) - f_valeur(jeu, -joueur_racine));
-	score += POID_AVANCEE_2 * (f_calcul_avance(jeu, joueur_racine) - f_calcul_avance(jeu, -joueur_racine));
-	score += POID_NBPIONS_2 * (f_nbPions(jeu, joueur_racine) - f_nbPions(jeu, -joueur_racine));
-
-	score += rand() % 10;
-	return score;
+    return score;
 }
 
 //copie du plateau
@@ -536,16 +569,16 @@ void f_nbNoeudsVisites(int joueur){
 //Fonction min trouve le minimum des noeuds fils
 Coup f_min(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, int mode_de_jeux, int alpha, int beta){
 	Coup min = { INFINI+100, -1, -1, -1, -1 };
-	int val;
+	Coup liste_meilleurs_coups[MAX_COUPS_EGAUX];
+	int nb_coups_egaux = 0; 
 
 	f_nbNoeudsVisites(joueur_racine);
-
+	
 	if((profondeur_limite == 0 || f_gagnant(plateau) != 0) && joueur_racine == -1 && mode_de_jeux == 3){
 		min.valeur = f_eval2(plateau, joueur_racine, profondeur_limite);
 		return min;
 	}
-
-	if(profondeur_limite == 0 || f_gagnant(plateau) != 0){
+	if((profondeur_limite == 0 || f_gagnant(plateau) != 0)){
 		min.valeur = f_eval(plateau, joueur_racine, profondeur_limite);
 		return min;
 	}
@@ -554,27 +587,23 @@ Coup f_min(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 
 	for(int l1=0; l1<NB_LIGNES; l1++){
 		for(int c1=0; c1<NB_COLONNES; c1++){
-
 			if(plateau[l1*NB_COLONNES+c1].couleur==joueur){
 
 				for(int l2=l1-1; l2<=l1+1; l2++){
 					for(int c2=c1-1; c2<=c1+1; c2++){
-
 						Pion plateau_fils[NB_LIGNES*NB_COLONNES];
 						f_copie_plateau(plateau, plateau_fils);
-						
 						if(f_bouge_piece(plateau_fils, l1, c1, l2, c2, joueur) != 1){
 
 							Coup coup = f_max(plateau_fils, -joueur, profondeur_limite-1, joueur_racine, mode_de_jeux, alpha, beta);
 							if(coup.valeur < min.valeur){
 								min.valeur = coup.valeur;
-								min.l1 = l1; 
-								min.c1 = c1;
-								min.l2 = l2;
-								min.c2 = c2;
-								// à la place de faire malloc utiliser un tableau local
-							} 
-							if(min.valeur < beta){
+								nb_coups_egaux = 0;
+							}
+							if(coup.valeur == min.valeur && nb_coups_egaux < MAX_COUPS_EGAUX){
+    							liste_meilleurs_coups[nb_coups_egaux++] = (Coup){coup.valeur, l1, c1, l2, c2};
+							}
+							if(min.valeur <= beta){
 								beta = min.valeur;
 							}
 							if(beta <= alpha){
@@ -590,13 +619,16 @@ Coup f_min(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 		}
 		if(coupure == 1) break;	 
 	}
+	if(nb_coups_egaux > 0)
+    	min = liste_meilleurs_coups[rand() % nb_coups_egaux];
 	return min;
 }
 
 //Fonction max trouve le maximum des noeuds fils
 Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, int mode_de_jeux, int alpha, int beta){
 	Coup max = { -INFINI-100, -1, -1, -1, -1 };
-	int val;
+	Coup liste_meilleurs_coups[MAX_COUPS_EGAUX];
+	int nb_coups_egaux = 0; 
 
 	f_nbNoeudsVisites(joueur_racine);
 	
@@ -604,7 +636,6 @@ Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 		max.valeur = f_eval2(plateau, joueur_racine, profondeur_limite);
 		return max;
 	}
-
 	if(profondeur_limite == 0 || f_gagnant(plateau) != 0){
 		max.valeur = f_eval(plateau, joueur_racine, profondeur_limite);
 		return max;
@@ -614,26 +645,23 @@ Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 
 	for(int l1=0; l1<NB_LIGNES; l1++){
 		for(int c1=0; c1<NB_COLONNES; c1++){
-
 			if(plateau[l1*NB_COLONNES+c1].couleur==joueur){
-
+				
 				for(int l2=l1-1; l2<=l1+1; l2++){
 					for(int c2=c1-1; c2<=c1+1; c2++){
-
 						Pion plateau_fils[NB_LIGNES*NB_COLONNES];
 						f_copie_plateau(plateau, plateau_fils);
-						
 						if(f_bouge_piece(plateau_fils, l1, c1, l2, c2, joueur) != 1){
 
 							Coup coup = f_min(plateau_fils, -joueur, profondeur_limite-1, joueur_racine, mode_de_jeux, alpha, beta);
 							if(coup.valeur > max.valeur){
 								max.valeur=coup.valeur;
-								max.l1 = l1; 
-								max.c1 = c1;
-								max.l2 = l2;
-								max.c2 = c2;
+								nb_coups_egaux = 0;
 							}
-							if(max.valeur > alpha){
+							if(coup.valeur == max.valeur && nb_coups_egaux < MAX_COUPS_EGAUX){
+								liste_meilleurs_coups[nb_coups_egaux++] = (Coup){coup.valeur, l1, c1, l2, c2};
+							}
+							if(max.valeur >= alpha){
 								alpha = max.valeur;
 							}
 							if(alpha >= beta){
@@ -649,6 +677,8 @@ Coup f_max(Pion *plateau, int joueur, int profondeur_limite, int joueur_racine, 
 		}
 		if(coupure == 1) break;	 
 	}
+	if(nb_coups_egaux > 0)
+    	max = liste_meilleurs_coups[rand() % nb_coups_egaux];
 	return max;
 }
 
@@ -669,6 +699,9 @@ void f_IA(int joueur, int mode, int bloque_printf){
 
     Coup meilleur_coup = f_max(plateauDeJeu, joueur, profondeur_limite, joueur_racine, mode, alpha, beta);
     
+	total_noeuds_partie_X += nb_noeuds_visites_joueurX;
+	total_noeuds_partie_O += nb_noeuds_visites_joueurO;
+
 	if(meilleur_coup.l1 == -1){   // aucun coup légal trouvé
 		printf("L'IA ne peut pas jouer\n");
 		return;
@@ -747,7 +780,10 @@ int main(int argv, char *argc[]){
 	printf("Choisissez le mode de jeu : "); 
 	scanf("%d", &mode);
 
-	if(mode != 4){
+	if(mode == 1 || mode == 2 || mode == 3){
+		total_noeuds_partie_X = 0;
+		total_noeuds_partie_O = 0;
+
 		plateauDeJeu = f_init_plateau();
 		while (!fin)
 		{
@@ -776,30 +812,43 @@ int main(int argv, char *argc[]){
 				{
 				case 1:
 					f_affiche_plateau(plateauDeJeu);
-					printf("\njoueur x gagne!\n");
+					printf("\njoueur x gagne!");
 					fin = 1;
 					break;
 				case -1:
 					f_affiche_plateau(plateauDeJeu);
-					printf("\njoueur o gagne!\n");
+					printf("\njoueur o gagne!");
 					fin = 1;
 					break;
 				}
 			}
 			joueur = -joueur;
 		}
+		printf("\nNoeuds totales explorés : X = %d, O = %d\n", total_noeuds_partie_X, total_noeuds_partie_O);
 	}
-	else{
+	else if(mode == 4){
 		
 		int nb_gagneX=0; int nb_gagneO=0;
 		printf("\nNombre de parties : "); 
 		scanf("%d", &nbParties);
-		int i=0;
-		while(i<nbParties){
+		int i=1;
 
+		if(joueur == 1) printf("1er coup joueur X");
+		if(joueur == -1) printf("1er coup joueur O");
+
+		long grand_total_X = 0, grand_total_O = 0;
+		double grand_temps = 0.0;
+		while(i<=nbParties){
+			
 			int fin = 0, mode = 3, bloque_printf = 1; // bloque_printf une var quelconque passé à f_IA pour bloquer les affichages
-
+			total_noeuds_partie_X = 0;
+			total_noeuds_partie_O = 0;
+			
+			printf("\n=========Partie %d =========", i);
+			
 			plateauDeJeu = f_init_plateau();
+			clock_t debut_partie = clock();
+
 			while (!fin) {
 				f_IA(joueur, mode , bloque_printf);
 
@@ -809,13 +858,13 @@ int main(int argv, char *argc[]){
 					{
 					case 1:
 						//f_affiche_plateau(plateauDeJeu);
-						printf("\njoueur x gagne!\n");
+						printf("\njoueur x gagne!");
 						nb_gagneX += 1;
 						fin = 1;
 						break;
 					case -1:
 						//f_affiche_plateau(plateauDeJeu);
-						printf("\njoueur o gagne!\n");
+						printf("\njoueur o gagne!");
 						nb_gagneO += 1;
 						fin = 1;
 						break;
@@ -824,11 +873,21 @@ int main(int argv, char *argc[]){
 				joueur = -joueur;
 			}
 			i+=1;
+			double duree_partie = (double)(clock() - debut_partie) / CLOCKS_PER_SEC;
+			grand_temps += duree_partie;
+
+			printf("\nTemps de la partie : %.3f s", duree_partie);
+			printf("\nNoeuds totales explorés : X = %d, O = %d", total_noeuds_partie_X, total_noeuds_partie_O);
+			printf("\n==========================");
+			grand_total_X += total_noeuds_partie_X;
+			grand_total_O += total_noeuds_partie_O;
 		}
 		float proba_nb_gagneX = 100.0f * (float)nb_gagneX / (float)nbParties;
 		float proba_nb_gagneO = 100.0f * (float)nb_gagneO / (float)nbParties;
-		printf("\nLe joueur X a gagné %d parties sur %d : %.3f%s de victoire\n", nb_gagneX, nbParties, proba_nb_gagneX, "%");
-		printf("\nLe joueur X a gagné %d parties sur %d : %.3f%s de victoire\n", nb_gagneO, nbParties, proba_nb_gagneO, "%");
+		printf("\nLe joueur X a gagné %d parties sur %d : %.3f%s de victoire", nb_gagneX, nbParties, proba_nb_gagneX, "%");
+		printf("\nLe joueur O a gagné %d parties sur %d : %.3f%s de victoire", nb_gagneO, nbParties, proba_nb_gagneO, "%");
+		printf("\nMoyenne noeuds/partie : X = %.0f, O = %.0f", (double)grand_total_X / nbParties, (double)grand_total_O / nbParties);
+		printf("\nTemps moyen par partie : %.3f s (total : %.3f s)\n", grand_temps / nbParties, grand_temps);
 	}
 
 #ifdef DEBUG
